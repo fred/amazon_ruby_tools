@@ -1,0 +1,329 @@
+#######################################
+#### WRITEN by Frederico de Souza #####
+#### fred.the.master@gmail.com    #####
+#### Free to use as in free beer  #####
+#######################################
+
+
+
+require 'rubygems'
+require 'ec2'
+require 'fastthread'
+require 'pathname'
+require 'ftools'
+require 'net/ssh'
+require 'net/sftp'
+require "ping"
+require 'xmlsimple'
+
+
+#########################
+##   SCRIPT SETTINGS   ##
+#########################
+
+## Account Information ##
+@unattended_mode = false
+@access_key_id = ENV['AMAZON_ACCESS_KEY_ID']
+@secret_access_key = ENV['AMAZON_SECRET_ACCESS_KEY']
+@account_name = ENV['AMAZON_ACCOUNT_NAME']
+
+## FOLDERS Information ##
+# Local Folder to dump the SQL data
+@time = Time.now
+@image_name = "#{@time.year}_#{@time.month}_#{@time.day}"
+@bucket_name = "#{@account_name}__EC2__#{@time.year}_#{@time.month}_#{@time.day}" 
+
+@lines = "\n----------------------------------------------------------"
+
+puts "Welcome!"
+puts "\n------------------"
+puts "Program Variables:"
+puts "\n------------------" 
+
+puts "- Access Key ID:      #{@access_key_id}"
+puts "- Secret Key ID:      #{@secret_access_key}"
+puts "- Account Name:       #{@account_name}"
+puts "- Image Name:         #{@image_name}"
+puts "- Bucket Name:        #{@bucket_name}"
+puts "- Local Time of Dump: #{@time}"
+puts "- Unattended mode:    #{@unattended_mode}"
+
+puts @lines
+puts "Is this Information correct?"
+  
+def check_answer
+  if @unattended_mode == false
+    puts "Press Y to Continue or N no Cancel."
+    yes_no = gets
+    yes_no.chomp!
+    case yes_no
+      when "Y","y","Yes","yes"
+        puts "Continuing"
+      when "N", "n", "No", "no"
+        puts "You chose to CANCEL, bye bye."
+        exit
+      when 'q', 'quit'
+        puts "You chose to QUIT, bye bye."
+        exit
+      else
+        puts "Invalid Answer."
+        check_answer
+    end
+  else
+    return true
+  end
+end
+
+# to print it nicely the data send
+def to_file_size(num)
+  case num
+  when 0 
+    return "0 byte"
+  when 1..1024
+    return "1K"
+  when 1025..1048576
+    kb = num/1024.0
+    return "#{f_to_dec(kb)} Kb"
+  when 1024577..1049165824
+    kb = num/1024.0
+    mb = kb / 1024.0
+    return "#{f_to_dec(mb)} Mb"
+  else
+    kb = num/1024.0
+    mb = kb / 1024.0
+    gb = mb / 1024.0
+    return "#{f_to_dec(gb)} Gb"
+  end
+end
+
+def f_to_dec(f, prec=2,sep='.')
+  num = f.to_i.to_s
+  dig = ((prec-(post=((f*(10**prec)).to_i%(10**prec)).to_s).size).times do post='0'+post end; post)
+  return num+sep+dig
+end
+
+
+# Function to send the files from local to the remote server
+def send_files(dns)
+  begin
+    Net::SFTP.start(dns, :username => @server_username, :keys => @ssh_keys) do |sftp|
+      #:registry_options => { :logs => { :levels => { "sftp.*" => :debug } } }
+      @files_count = 0
+      @data_transferred = 0 
+  
+      # Check if destination directory at server exists
+      begin
+        sftp.opendir( @remote_destination )
+        puts "Remote Directory exists."
+      rescue
+        puts "Directory '#{@remote_destination}' does not exist, creating now. \n"
+        sftp.mkdir(@remote_destination, :permissions => 0777)
+        puts "Remote Directory was created."
+      end
+  
+      # Check if destination directory was created
+      begin
+        sftp.opendir( @remote_destination )
+      rescue
+        puts "INFO: Directory '#{@remote_destination}' does not exist, and cannot be created. \n"
+        puts "Fix the errors and run again."
+        puts "EXIT now."
+        exit
+      end
+  
+      @dest_dir = @remote_destination + "/" + @data_subdir
+      puts "INFO: Creating Remote subdirectory '#{@dest_dir}' with mode 700"
+      sftp.mkdir(@dest_dir, :permissions => 0700)
+  
+      puts "Full Pathname localy is #{@full_pathname}."
+      p = Pathname.new(@full_pathname)
+      p.children.each do |item|
+        file_name = item.relative_path_from(Pathname.new(@full_pathname)).to_s
+          @files_count += 1
+          @data_transferred += item.size
+          puts "Putting Local File: '#{item}'"
+          puts "To Remote Server File: '#{@dest_dir}/#{file_name}'"
+          sftp.put_file "#{item}", "#{@dest_dir}/#{file_name}"
+      end
+  
+      puts @lines
+      puts "Files Copied: #{@files_count}"
+      puts "Data Transfered: #{@data_transferred} bytes."
+      puts "done!"
+    end
+  rescue => exception
+    puts @lines
+    puts "There was an error: "
+    puts exception.to_s
+    exit
+  end
+end
+
+
+#############
+##  START  ##
+#############
+
+## Execution Start here ##
+def main_program  
+  check_answer
+  # create the instance of the ec2 object
+  # do it now 
+  puts @lines
+  puts "Loading EC2 Account"
+  begin
+    ec2 = EC2::Base.new( :access_key_id => @access_key_id, :secret_access_key => @secret_access_key )
+  rescue => exception
+    puts "FATAL ERROR: #{exception.to_s}"
+    puts "EC2 account cannot be loaded."
+    puts "Did you set AMAZON_ACCESS_KEY_ID and AMAZON_SECRET_ACCESS_KEY ? "
+    puts "Exiting now"
+    exit
+  end
+  puts "EC2 account loaded Successfully."
+
+  puts @lines
+  puts "Start AMI Instance #{@instance_id}? "
+  check_answer
+  begin
+    puts "Loading Instance"
+    puts "Be Patient, it might take a while..."
+    @running_instance = ec2.run_instances(:image_id => @instance_id)
+    sleep 2
+    puts "Success, Instance #{@instance_id} in loading now..."
+  rescue => exception
+    puts "There was an error loading the instance."
+    puts "#{exception.to_s}"
+    puts "Did you set instance_id correctly ? "
+    puts "Exiting now"
+    exit
+  end
+  
+  ### START MYSQL DUMP ###
+  puts @lines
+  puts "Starting MYSQL Dump \n"
+  sleep 1
+  if @all_databases 
+    puts "INFO: Going to dump all databases into"
+    puts "  '#{@full_pathname}'"
+    check_answer
+  else
+    puts "INFO: Going to dump '#{@databases.join(", ")}' databases into"
+    puts "  '#{@full_pathname}'"
+  end
+
+  # Check if destination directory at local exists
+  begin
+    puts "INFO: Creating Directory '#{@full_pathname}' with mode 700"
+    FileUtils.mkdir_p @full_pathname, :mode => 0700 
+  rescue
+    puts "WARNING: directory '#{@full_pathname}' could not be created."
+    puts "WARNING: Going to use '/tmp' folder."
+    @full_pathname = "/tmp/#{@data_subdir}"
+  end
+  
+  # make the actual dump
+  puts @lines
+  puts "Starting MYSQL dump?"
+  check_answer
+  make_mysql_backup
+  puts "Done Dumping SQL data."
+  sleep 2
+
+  # check if the instance is already up
+  #if Ping.pingecho "ec2-67-202-36-60.compute-1.amazonaws.com", 5
+  # Wait about 5 Minutes for instance to load
+  puts @lines
+  puts "Instance is loading now.... Please wait."
+  
+  # Wait 5 minutes, in order for the Instance to complete Loading
+  # It normally take 2 to 3 minutes, but, using 4 to be safe
+  # if instance didn't load, after this count finishes, 
+  #  the script will fails... 
+  # Please FIX this or find a better way to do it.
+  puts "We must wait about 4 minutes to get the new instance IP."
+  sleep 60
+  puts "3 minutes left"
+  sleep 60
+  puts "2 minutes left"
+  sleep 62
+  puts "1 minute left"
+  sleep 60
+  # run_instance only returns instanceId as usefull data.
+  # We need to call describe instance later to the the assigned DNS.
+  # The DNS is dynamic, each time we load the ami, a new DNS is set.
+  @instance_real_id = @running_instance.instancesSet.item[0].instanceId
+  begin
+    # Now get the instace again, but with the corrent data, such as dnsName.
+    @instance = ec2.describe_instances(:instance_id => @instance_real_id)
+    # Convert the stringfied xml into real XML
+    @xml_data = XmlSimple.xml_in(@instance.xml)
+    @dns = @xml_data['reservationSet'][0]['item'][0]['instancesSet'][0]['item'][0]['dnsName'][0]
+  rescue => exception
+    puts "Error: #{exception}"
+    puts "No response, maybe the instance didn't load yet, waiting another 2 minutes."
+    puts "If this error continues. Check the script settings and run again."
+    sleep 120
+    retry
+  end
+  
+  # Pinging machine
+  # you must allow ping before your ami can be pinged:
+  # ec2-authorize default  -P icmp -t-1:-1
+  puts @lines
+  6.times do 
+    puts "Pinging instance #{@dns}..."
+    if !Ping.pingecho(@dns, 5, 22)
+      puts "No response, instance didn't load yet, waiting anther 30 seconds"
+      sleep 30
+    end
+  end
+  if !Ping.pingecho(@dns, 5, 22)
+    puts "Something went wrong. Instance didn't load."
+    puts "Check manually the script settings and run again. Bye!"
+    exit
+  end
+  # send the file through SSH
+  puts "Good, instance loaded."
+  
+  puts @lines
+  puts "Now Going to copy Data to #{@dns}."
+  
+  send_files(@dns)
+  
+  begin 
+    puts "WARNING: Shutdown Instance now? "
+    begin
+      puts "Going to Shutdown instance in 60 Seconds..."
+      sleep 60        
+      #ec2.terminate_instances(:image_id => @image_id)
+    rescue => exception
+      puts "Instance will not be Shutdown."
+      puts "There was an error terminating the instance:"
+      puts "#{exception.to_s}"
+    end
+  end
+end
+
+main_program
+
+# EXIT PROGRAM HERE
+
+
+### SOME BASIC COMMANDS EXAMPLES ###
+## Note: If you want to use these commands from EC2sh, use @ec2 as the object instead of ec2.
+
+## To view all images, output in XML format:
+# ec2.describe_images.xml
+
+## To view all images owned by a particular owner ID, output as a string (owner ID is an example):
+#ec2.describe_images(:owner_id => '186621337741').to_s
+
+## To run an instance of an image (image ID is an example; you can use any Amazon Machine Image (AMI) image you have uploaded or that is publicly available):
+# ec2.run_instances(:image_id => 'ami-f9907590')
+
+## To terminate an instance, based on the image ID (note that it can take up to an hour for the instance to no longer appear in queries):
+# ec2.terminate_instances(:image_id => 'ami-f9907590')
+
+## To create a security group:
+# ec2.create_security_group(:group_name => "group name", :group_description => "group description")
