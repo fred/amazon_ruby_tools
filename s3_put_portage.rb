@@ -18,7 +18,7 @@ require 'aws/s3'
 
 @access_key_id = ENV['AMAZON_ACCESS_KEY_ID']
 @secret_access_key = ENV['AMAZON_SECRET_ACCESS_KEY']
-@bucket_name = ENV['AMAZON_BUCKET_NAME'] #"easyone_gentoo_portage"
+@bucket_name = ENV['AMAZON_BUCKET_NAME']
 
 def update_portage
   puts "Updating portage via EIX"

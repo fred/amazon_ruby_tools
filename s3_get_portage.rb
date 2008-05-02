@@ -11,11 +11,11 @@ require 'aws/s3'
 
 @date_format = "#{@time.year}.#{@time.moth}.#{@time.day}"
 @portage_name = "#{@date_format}_portage.tar.gz"
-@bucket_name = "gentoo_portage"
 @local_portage = "/mnt/portage.tar.gz"
 
 @access_key_id = ENV['AMAZON_ACCESS_KEY_ID']
 @secret_access_key = ENV['AMAZON_SECRET_ACCESS_KEY']
+@bucket_name = ENV['AMAZON_BUCKET_NAME']
 
 def download_portage
   AWS::S3::Base.establish_connection!( :access_key_id => @access_key_id, :secret_access_key => @secret_access_key)
