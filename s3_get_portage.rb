@@ -34,17 +34,12 @@ def untar_portage
   FileUtils.rm("/mnt/gentoo/portage", :force => true)
   puts "Starting to untar file to local portage. Wait 2 minutes"
   puts "cd /mnt/gentoo/ && tar -xzpf #{@local_portage}"
-  Thread.new do
-    IO.popen("cd /mnt/gentoo/ && rm -rf portage && tar -xzpf #{@local_portage}")
-  end
-  sleep 120
+  IO.popen("cd /mnt/gentoo/ && rm -rf portage && tar -xzpf #{@local_portage}")
 end
 
 def update_portage
   puts "Updating portage via EIX"
-  Thread.new do
-    IO.popen("eix-sync")
-  end
+  IO.popen("eix-sync")
 end
 
 download_portage

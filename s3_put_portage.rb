@@ -22,10 +22,7 @@ require 'aws/s3'
 def update_portage
   puts "Updating portage via EIX"
   puts "Wait 2 minutes"
-  Thread.new do
-    IO.popen("eix-sync")
-  end
-  sleep 120
+  IO.popen("eix-sync")
 end
 
 # Function to stablish connection
@@ -61,9 +58,7 @@ end
 def tar_portage
   puts "Starting to make tar file of local portage. Wait 2 minutes"
   puts "cd /mnt/gentoo/ && rm -rf #{@local_portage} && tar -czpf #{@local_portage} portage"
-  Thread.new do
-    IO.popen("cd /mnt/gentoo/ && rm -rf #{@local_portage} && tar -czpf #{@local_portage} portage")
-  end
+  IO.popen("cd /mnt/gentoo/ && rm -rf #{@local_portage} && tar -czpf #{@local_portage} portage")
   sleep 120
 end
 
@@ -110,4 +105,4 @@ end
 stablish_connection
 find_or_create_bucket
 tar_portage
-send_data
+#send_data
