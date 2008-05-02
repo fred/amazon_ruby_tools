@@ -10,7 +10,7 @@
 require 'aws/s3'
 
 @time = Time.now
-@date_format = "#{@time.year}.#{@time.moth}.#{@time.day}"
+@date_format = "#{@time.year}.#{@time.month}.#{@time.day}"
 @portage_name = "#{@date_format}_portage.tar.gz"
 @local_portage = "/mnt/portage.tar.gz"
 
