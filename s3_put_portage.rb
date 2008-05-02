@@ -13,11 +13,12 @@ require 'aws/s3'
 @date_format = "#{@time.year}.#{@time.month}.#{@time.day}"
 @lines = "\n----------------------------------------------------------"
 @portage_name = "#{@date_format}_portage.tar.gz"
-@bucket_name = "easyone_gentoo_portage"
+
 @local_portage = "/mnt/portage.tar.gz"
 
 @access_key_id = ENV['AMAZON_ACCESS_KEY_ID']
 @secret_access_key = ENV['AMAZON_SECRET_ACCESS_KEY']
+@bucket_name = ENV['AMAZON_BUCKET_NAME'] #"easyone_gentoo_portage"
 
 def update_portage
   puts "Updating portage via EIX"
