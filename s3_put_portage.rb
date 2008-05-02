@@ -102,8 +102,8 @@ def f_to_dec(f, prec=2,sep='.')
   return num+sep+dig
 end
 
-#update_portage
+update_portage
 stablish_connection
 find_or_create_bucket
 tar_portage
-#send_data
+send_data
