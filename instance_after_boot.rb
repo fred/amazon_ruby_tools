@@ -4,7 +4,9 @@ require 'fileutils'
   "/mnt/gentoo/log",
   "/mnt/gentoo/portage",
   "/mnt/gentoo/tmp",
-  "/mnt/app"
+  "/mnt/apps",
+  "/mnt/log",
+  "/var/www"
 ]
 
 
@@ -19,4 +21,6 @@ require 'fileutils'
 end
 
 
+
 FileUtils.ln_s("/mnt/apps", "/var/www/apps", :force => true)
+FileUtils.ln_s("/mnt/log", "/var/log", :force => true)

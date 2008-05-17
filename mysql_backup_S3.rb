@@ -10,6 +10,7 @@ require 'aws/s3'
 require 'fastthread'
 require 'pathname'
 require 'ftools'
+require "fileutils"
 
 
 #########################
