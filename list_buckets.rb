@@ -6,7 +6,7 @@ require 'aws/s3'
 @secret_access_key = ENV['AMAZON_SECRET_ACCESS_KEY']
 
 
-@lines = "\n----------------------------------------------------------"
+@lines = "----------------------------------------------------------"
 
 def check_settings
   unless ENV['AMAZON_ACCESS_KEY_ID']
@@ -40,18 +40,49 @@ def stablish_connection
 end
 
 def list_buckets
-  puts "All buckets"
+  puts "Current buckets:"
   buckets = AWS::S3::Bucket.list
   buckets.each do |t|
+    puts @lines
     puts "Name: #{t.name}"
     puts "Date: #{t.creation_date}"
-    puts "-----------------------"
+    puts @lines
+    puts "\n"
+  end
+end
+
+# Function to find or create a bucket
+def find_bucket(bucket_name)
+  if bucket = AWS::S3::Bucket.find(bucket_name)
+    puts "Bucket #{bucket_name} found."
+    bucket
+  else
+    puts "The bucket #{bucket_name} could not be found"
+    nil
+  end
+end
+
+
+# Function to find or create a bucket
+def create_bucket(bucket_name)
+  return if find_bucket(bucket_name)
+
+  begin
+    puts 'Creating the bucket now.'
+    AWS::S3::Bucket.create(bucket_name)
+  rescue 
+    puts "The bucket #{bucket_name} could not be created"
+    return
+  end
+  
+  sleep 1
+  if find_bucket(bucket_name)
+    puts "Good, bucket #{bucket_name} created."
   end
 end
 
 
 check_settings
-
 stablish_connection
 list_buckets
 
