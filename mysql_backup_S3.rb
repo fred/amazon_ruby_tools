@@ -21,6 +21,7 @@ require "fileutils"
 @access_key_id = ENV['AMAZON_ACCESS_KEY_ID']
 @secret_access_key = ENV['AMAZON_SECRET_ACCESS_KEY']
 @bucket_name = ENV['AMAZON_MYSQL_BUCKET_NAME']
+@home = ENV['HOME']
 
 @time = Time.now
 
@@ -32,8 +33,8 @@ require "fileutils"
 # default 7
 @lzma_compress_rate = 4
 
-@data_dir = "/Users/fred/backup/mysql/tmp/#{@time.year}/#{@time.month}/"
-@done_data_dir = "/Users/fred/backup/mysql/#{@time.year}/#{@time.month}/"
+@data_dir = "#{@home}/backup/mysql/tmp/#{@time.year}/#{@time.month}/"
+@done_data_dir = "#{@home}/backup/mysql/#{@time.year}/#{@time.month}/"
 @filename = "#{@time.strftime("%Y%m%d_%H%M%S")}"
 
 # TODO
