@@ -1,5 +1,6 @@
 require 'rubygems'
 require 'aws/s3'
+require 'yaml'
 
 
 @access_key_id = ENV['AMAZON_ACCESS_KEY_ID']
@@ -39,6 +40,14 @@ def stablish_connection
   return "ok"
 end
 
+def bucket_objects(bucket_name)
+  if bucket = find_bucket(bucket_name)
+    bucket.objects.each do |b|
+      puts b.key
+    end
+  end
+end
+
 def list_buckets
   puts "Current buckets:"
   buckets = AWS::S3::Bucket.list
@@ -46,6 +55,10 @@ def list_buckets
     puts @lines
     puts "Name: #{t.name}"
     puts "Date: #{t.creation_date}"
+    puts "Objects: "
+    t.objects.each do |b|
+      puts b.key
+    end
     puts @lines
     puts "\n"
   end
@@ -82,7 +95,7 @@ def create_bucket(bucket_name)
 end
 
 
+
 check_settings
 stablish_connection
 list_buckets
-
