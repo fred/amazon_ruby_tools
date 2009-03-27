@@ -223,7 +223,8 @@ def make_mysql_backup
     }
     mysqldump(options)
     compress_file(file_name)
-  else
+  end
+  if @databases && !@databases.empty?
     @databases.each do |db|
       options = {
         :dump_options => db[:dump_options].to_s,
