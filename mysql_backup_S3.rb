@@ -27,14 +27,14 @@ require "fileutils"
 
 # nice value: -19 to 19
 # default 0
-@nice = 10
+@nice = 18
 
 # lzma compression rates: 1-2 (fast) 3-9 (slow)
 # default 7
 @lzma_compress_rate = 2
 
-@data_dir = "#{@home}/backup/mysql/tmp/#{@time.strftime("%Y")}/#{@time.strftime("%m")}/"
-@done_data_dir = "#{@home}/backup/mysql/#{@time.strftime("%Y")}/#{@time.strftime("%m")}/"
+@data_dir = "#{@home}/backup/mysql/tmp/#{@time.strftime("%Y")}/#{@time.strftime("%m")}"
+@done_data_dir = "#{@home}/backup/mysql/#{@time.strftime("%Y")}/#{@time.strftime("%m")}"
 @filename = "#{@time.strftime("%Y%m%d_%H%M%S")}"
 
 # TODO
@@ -46,7 +46,7 @@ require "fileutils"
 ]
 
 # If this is true, backup all databases
-@all_databases = false
+@all_databases = true
 
 # Extra options to append to mysqldump
 @extra_dump_options = ""
@@ -175,17 +175,6 @@ end
 
 # Function to make the Database Dumps
 def mysqldump(options)
-  
-  if options[:all_databases == true]
-    file_name = "#{@data_dir}/ALL_DATABASES_#{@extra_dump_options}_#{@filename}.sql"
-    if @db_password.to_s.empty?
-      command = " nice -n #{@nice} mysqldump -u #{@db_username} #{@extra_dump_options} --all_databases > #{file_name}"
-    else
-      command = " nice -n #{@nice} mysqldump -u #{@db_username} #{@extra_dump_options} -p#{@db_password} --all_databases > #{file_name}"
-    end
-    puts "\nEXECUTING:\n   #{command}"
-    system(command)
-  else
     name = options[:name].to_s
     append_name = options[:append_name].to_s
     dump_options = options[:dump_options].to_s
@@ -196,13 +185,10 @@ def mysqldump(options)
     end
     file_name = "#{@data_dir}/#{append_name}#{name}_#{dump_options}_#{@filename}.sql"
     puts "Dumping #{options[:name]} into #{file_name}\n"
-    command = " nice -n #{@nice} mysqldump -u #{@db_username} #{dump_options} #{@extra_dump_options} #{db_password} #{name} > #{file_name}"
+    command = " nice -n #{@nice} mysqldump -u #{@db_username} #{dump_options} #{db_password} #{@extra_dump_options} #{name} > #{file_name}"
     puts "\nEXECUTING:\n   #{command}"
     system(command)
-  end
-  
-  puts "Done Dumping SQL data."
-  file_name
+    return file_name
 end
 
 
@@ -219,7 +205,9 @@ end
 def make_mysql_backup
   if @all_databases
     options = {
-        :all_databases => @all_databases
+      :name => "--all-databases",
+      :dump_options => "",
+      :append_name => ""
     }
     file_name = mysqldump(options)
     compress_file(file_name)
@@ -227,10 +215,9 @@ def make_mysql_backup
   if @databases && !@databases.empty?
     @databases.each do |db|
       options = {
-        :dump_options => db[:dump_options].to_s,
         :name => db[:name].to_s,
-        :append_name => db[:append_name].to_s,
-        :all_databases => @all_databases
+        :dump_options => db[:dump_options].to_s,
+        :append_name => db[:append_name].to_s
       }
       file_name = mysqldump(options)
       compress_file(file_name)
