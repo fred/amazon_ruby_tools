@@ -39,9 +39,17 @@ require "fileutils"
 
 # TODO
 # Array of databases to backup
-@databases = []
+@databases = [
+  {:name => "ul2", :dump_options => "--no-create-info", :append_name => ""},
+  {:name => "ul2_dev", :dump_options => "--no-create-info", :append_name => ""},
+  {:name => "ul2_prod", :dump_options => "--no-create-info", :append_name => ""}
+]
+
 # If this is true, backup all databases
-@all_databases = true
+@all_databases = false
+
+# Extra options to append to mysqldump
+@extra_dump_options = ""
 
 # Username / Password to access DB
 # it's good to create a user with READ only access to all databases.
@@ -69,7 +77,6 @@ if @unattended_mode == false
   puts "- Local Dump Dir:     #{@data_dir}"
   puts "- Local Time of Dump: #{@time}"
   puts "- Remote Path:        #{@remote_destination}"
-  puts "- Databases:          #{@databases.join(',')}"
   puts "- All Databases?      #{@all_databases}"
   puts "- DB Username:        #{@db_username}"
   puts "- DB Password:        Not Shown"
@@ -147,6 +154,7 @@ def check_answer
   end
 end
 
+
 def check_settings
   if !ENV['DB_USERNAME']
     puts "WARNING: Database Username not set, using 'root'"
@@ -166,45 +174,64 @@ end
 
 
 # Function to make the Database Dumps
-def mysqldump(db_name, file_name)
-  if db_name
+def mysqldump(options)
+  
+  if options[:all_databases == true]
+    file_name = "#{@data_dir}/ALL_DATABASES_#{@extra_dump_options}_#{@filename}.sql"
     if @db_password.to_s.empty?
-      system(" nice -n #{@nice} mysqldump -u #{@db_username} #{db_name} > #{file_name}")
+      command = " nice -n #{@nice} mysqldump -u #{@db_username} #{@extra_dump_options} --all_databases > #{file_name}"
     else
-      system(" nice -n #{@nice} mysqldump -u #{@db_username} -p#{@db_password} #{db_name} > ##{file_name}")
+      command = " nice -n #{@nice} mysqldump -u #{@db_username} #{@extra_dump_options} -p#{@db_password} --all_databases > #{file_name}"
     end
+    puts "\nEXECUTING:\n   #{command}"
+    system(command)
   else
+    name = options[:name].to_s
+    append_name = options[:append_name].to_s
+    dump_options = options[:dump_options].to_s
     if @db_password.to_s.empty?
-      system(" nice -n #{@nice} mysqldump -u #{@db_username} --all_databases > #{file_name}")
+      db_password = ""
     else
-      system(" nice -n #{@nice} mysqldump -u #{@db_username} -p#{@db_password} --all_databases > #{file_name}")
+      db_password = "-p#{@db_password}"
     end
+    file_name = "#{@data_dir}/#{append_name}#{name}_#{dump_options}_#{@filename}.sql"
+    puts "Dumping #{options[:name]} into #{file_name}\n"
+    command = " nice -n #{@nice} mysqldump -u #{@db_username} #{dump_options} #{@extra_dump_options} #{db_password} #{name} > #{file_name}"
+    puts "\nEXECUTING:\n   #{command}"
+    system(command)
   end
+  
   puts "Done Dumping SQL data."
+  file_name
 end
 
+
 def compress_file(file_name)
-  #system(" nice tar -cjpf #{file_name}.tar.bz2 #{file_name}")
-  system(" nice -n #{@nice} lzma -#{@lzma_compress_rate} -z #{file_name}")
+  puts "Compressing file #{file_name}."
+  # command = " nice tar -cjpf #{file_name}.tar.bz2 #{file_name}"
+  command = " nice -n #{@nice} lzma -#{@lzma_compress_rate} -z #{file_name}"
+  puts "\nEXECUTING:\n   #{command}"
+  system(command)
 end
 
 
 # Function to run the actual mysqldump command
 def make_mysql_backup
   if @all_databases
-    file_name = "#{@data_dir}/#{@filename}_ALL.sql"
-    mysqldump(nil,file_name)
-    puts "Compressing file #{file_name}."
+    options = {
+        :all_databases => @all_databases
+    }
+    mysqldump(options)
     compress_file(file_name)
-    # LZMA alrady deletes the .sql file
-    #puts "Deleting file #{file_name}."
-    #FileUtils.rm_rf(file_name)
   else
-    @databases.each do |db_name|
-      file_name = "#{@data_dir}/#{@filename}_#{db_name}.sql"
-      puts "Dumping #{db_name} into #{file_name}\n"
-      mysqldump(db_name, file_name)
-      puts "Compressing file #{file_name}."
+    @databases.each do |db|
+      options = {
+        :dump_options => db[:dump_options].to_s,
+        :name => db[:name].to_s,
+        :append_name => db[:append_name].to_s,
+        :all_databases => @all_databases
+      }
+      file_name = mysqldump(options)
       compress_file(file_name)
     end
   end
@@ -339,13 +366,13 @@ def main_program
   
   puts @lines
   puts "Stablishing Connection to S3 account."
-  stablish_connection
+  #stablish_connection
   
-  find_or_create_bucket
+  #find_or_create_bucket
   
   puts @lines
   puts "Now Going to copy Data to S3 bucket #{@bucket_name}."
-  send_data
+  #send_data
   
   puts @lines
   puts "#{@time} -- DONE"
