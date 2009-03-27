@@ -31,10 +31,10 @@ require "fileutils"
 
 # lzma compression rates: 1-2 (fast) 3-9 (slow)
 # default 7
-@lzma_compress_rate = 4
+@lzma_compress_rate = 2
 
-@data_dir = "#{@home}/backup/mysql/tmp/#{@time.year}/#{@time.month}/"
-@done_data_dir = "#{@home}/backup/mysql/#{@time.year}/#{@time.month}/"
+@data_dir = "#{@home}/backup/mysql/tmp/#{@time.strftime("%Y")}/#{@time.strftime("%m")}/"
+@done_data_dir = "#{@home}/backup/mysql/#{@time.strftime("%Y")}/#{@time.strftime("%m")}/"
 @filename = "#{@time.strftime("%Y%m%d_%H%M%S")}"
 
 # TODO
@@ -298,7 +298,7 @@ def send_data
     AWS::S3::S3Object.store(file_name, open(item), @bucket_name)
     puts @lines
     puts "Moving #{file_name} to #{@done_data_dir}"
-    FileUtils.mv(item, @done_data_dir, :noop => false, :verbose => true)
+    FileUtils.mv(item, @done_data_dir, :noop => false, :verbose => false)
   end
 
   puts @lines
