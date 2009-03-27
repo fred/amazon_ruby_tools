@@ -367,13 +367,13 @@ def main_program
   
   puts @lines
   puts "Stablishing Connection to S3 account."
-  #stablish_connection
+  stablish_connection
   
-  #find_or_create_bucket
+  find_or_create_bucket
   
   puts @lines
   puts "Now Going to copy Data to S3 bucket #{@bucket_name}."
-  #send_data
+  send_data
   
   puts @lines
   puts "#{@time} -- DONE"
