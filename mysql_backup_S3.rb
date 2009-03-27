@@ -221,7 +221,7 @@ def make_mysql_backup
     options = {
         :all_databases => @all_databases
     }
-    mysqldump(options)
+    file_name = mysqldump(options)
     compress_file(file_name)
   end
   if @databases && !@databases.empty?
